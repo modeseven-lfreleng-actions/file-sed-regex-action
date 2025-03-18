@@ -1,36 +1,41 @@
 <!--
-# SPDX-License-Identifier: Apache-2.0
-# SPDX-FileCopyrightText: 2025 The Linux Foundation
+SPDX-License-Identifier: Apache-2.0
+SPDX-FileCopyrightText: 2025 The Linux Foundation
 -->
 
-# 🛠️ Template Action
+# 📦 String Substitution in File (using sed)
 
-This is a template for the other actions in this Github organisation.
+Performs string substitutions using the command-line tool, sed.
 
-## actions-template
+## file-grep-regex-action
 
 ## Usage Example
 
-<!-- markdownlint-disable MD046 -->
+Call as a step in a larger composite action or workflow.
+
+<!-- markdownlint-disable MD013 -->
 
 ```yaml
-steps:
-  - name: "Action template"
-    id: action-template
-    uses: lfreleng-actions/actions-template@main
-    with:
-      input: "placeholder"
+- name: "Replace project version string"
+  uses: lfreleng-actions/file-sed-regex-action@main
+  with:
+    flags: "-i -E"
+    regex: 's:^version =.*$:version = "${{ env.REPLACEMENT_STRING }}":'
+    path: "pyproject.toml"
 ```
 
-<!-- markdownlint-enable MD046 -->
+<!-- markdownlint-enable MD013 -->
 
 ## Inputs
 
 <!-- markdownlint-disable MD013 -->
 
-| Variable Name | Required | Description  |
-| ------------- | -------- | ------------ |
-| INPUT         | False    | Action input |
+| Variable Name | Required | Default | Description                                            |
+| ------------- | -------- | ------- | ------------------------------------------------------ |
+| FLAGS         | True     | N/A     | The flags passed to sed on the command line            |
+| REGEX         | True     | N/A     | The regular expression to use                          |
+| PATH          | True     | N/A     | Path to the file to undergo string substitution        |
+| NO_FAIL       | False    | False   | Do not exit (when file not found or replacement fails) |
 
 <!-- markdownlint-enable MD013 -->
 
@@ -38,12 +43,10 @@ steps:
 
 <!-- markdownlint-disable MD013 -->
 
-| Variable Name | Description   |
-| ------------- | ------------- |
-| OUTPUT        | Action output |
+| Variable Name    | Description                                    |
+| ---------------- | ---------------------------------------------- |
+| EXIT_STATUS      | The sed command exit status                    |
+
+Note: output variable will be inaccessible unless NO_FAIL provided as input to the action
 
 <!-- markdownlint-enable MD013 -->
-
-## Implementation Details
-
-## Notes
