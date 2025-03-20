@@ -7,7 +7,7 @@ SPDX-FileCopyrightText: 2025 The Linux Foundation
 
 Performs string substitutions using the command-line tool, sed.
 
-## file-grep-regex-action
+## file-sed-regex-action
 
 ## Usage Example
 
