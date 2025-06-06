@@ -3,78 +3,66 @@
 # SPDX-FileCopyrightText: 2025 The Linux Foundation
 
 # file-sed-regex-action
-name: "String Substitution in File (using sed)"
-description: "Performs string substitutions using the command-line tool, sed"
+name: 'String Substitution in File (using sed)'
+description: 'Performs string substitutions using the command-line tool, sed'
 
 inputs:
   # Mandatory
-  FLAGS:
-    description: "Flags to use with SED command"
+  flags:
+    description: 'Flags to use with SED command'
     required: false
-    default: "-i"
-  REGEX:
-    description: "Search/replace expression"
+    default: '-i'
+  regex:
+    description: 'Search/replace expression'
     required: true
-  PATH:
-    description: "Path to local file to modify"
+  path:
+    description: 'Path to local file to modify'
     required: true
   # Optional
-  NO_FAIL:
-    description: "Override errors if file not found or no value returned"
+  debug:
+    description: 'Enable debugging output'
     required: false
-    default: "false"
 
 outputs:
-  EXIT_STATUS:
-    description: "Exit status of sed command"
+  exit_status:
+    description: 'Exit status of sed command'
     value: ${{ steps.sed.outputs.exit_status }}
 
 runs:
-  using: "composite"
+  using: 'composite'
   steps:
-    - name: "Perform string substitution in: ${{ inputs.PATH }}"
+    - name: 'Performing string substitution'
       id: sed
       shell: bash
       run: |
-        # Perform string substitution in: ${{ inputs.PATH }}
+        # Performing string substitution
 
-        SED_CMD=$(which sed)
-        if [ ! -x "$SED_CMD" ]; then
-          echo "Error: sed command not in PATH ❌"
-          exit 1
+        sed_cmd=$(which sed)
+        if [ ! -x "$sed_cmd" ]; then
+          echo 'Error: sed command not in PATH ❌'; exit 1
+        elif ! ($sed_cmd sed --version 2>&1 | grep -q GNU); then
+          echo 'Error: this action only works with GNU sed ❌'; exit 1
         fi
 
-        FILE_PATH="${{ inputs.PATH }}"
-        if [ -z "$FILE_PATH" ]; then
-          echo "Error: input variable/path cannot be empty ❌"
-          exit 1
-        elif [ ! -f "$FILE_PATH" ]; then
-          echo -n "Error: file not found "
-          if [ "${{ inputs.NO_FAIL }}" = "true" ]; then
-            echo "⚠️"
-            echo "Path: $FILE_PATH"
-            exit 0
-          else
-            echo "❌"
-            echo "Path: $FILE_PATH"
-            exit 1
-          fi
+        file_path="${{ inputs.path }}"
+        if [ -z "$file_path" ]; then
+          echo 'Error: input variable/path cannot be empty ❌'; exit 1
+        elif [ ! -f "$file_path" ]; then
+          echo "Error: file not found ❌"
+          echo "Path: $file_path"; exit 1
         fi
 
         set -o noglob
-        "$SED_CMD" '${{ inputs.FLAGS }}' '${{ inputs.REGEX }}' "$FILE_PATH"
-        EXIT_STATUS="$?"
-        echo "exit_status=$EXIT_STATUS" >> "$GITHUB_OUTPUT"
-        if [ "$EXIT_STATUS" != "0" ]; then
-          echo -n "Error: sed command failed with exit status $EXIT_STATUS "
-          if [ "${{ inputs.NO_FAIL }}" = "true" ]; then
-            echo "⚠️"
-            exit 0
-          else
-            echo "❌"
-            $EXIT_STATUS
-          fi
+        if [ "f${{ inputs.debug }}" = 'ftrue' ]; then
+          echo "$sed_cmd ${{ inputs.flags }} '${{ inputs.regex }}' $file_path"
+        fi
+        "$sed_cmd" ${{ inputs.flags }} '${{ inputs.regex }}' "$file_path"
+        exit_status="$?"
+        echo "exit_status=$exit_status" >> "$GITHUB_OUTPUT"
+        if [ "$exit_status" != '0' ]; then
+          echo -n "Error: sed command failed with exit status $exit_status ❌"
+          exit $exit_status
         else
-          echo "exit_status=0" >> "$GITHUB_OUTPUT"
-          echo "Successful ✅ "
+          echo 'exit_status=0' >> "$GITHUB_OUTPUT"
+          echo 'Successful sed command/operation ✅'
         fi

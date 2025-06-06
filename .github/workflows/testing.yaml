@@ -3,48 +3,117 @@
 # SPDX-FileCopyrightText: 2025 The Linux Foundation
 
 # Action test/validation workflow
-name: "Test GitHub Action 🧪"
+name: 'Test GitHub Action 🧪'
 
 # yamllint disable-line rule:truthy
 on:
   workflow_dispatch:
   push:
-    branches: ["main"]
+    branches: ['main']
   pull_request:
-    branches: ["main"]
+    branches: ['main']
 
 permissions: {}
 
 jobs:
   ### Test the GitHub Action in this Repository ###
   tests:
-    name: "Action Testing"
+    name: 'Action Testing'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
-      - name: "Checkout repository"
+      - name: 'Checkout repository'
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       # Perform setup prior to running test(s)
-      - name: "Checkout sample project repository"
+      - name: 'Checkout sample project repository'
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          repository: "lfreleng-actions/test-python-project"
-          path: "test-python-project"
+          repository: 'lfreleng-actions/test-python-project'
+          path: 'test-python-project'
 
-      - name: "Run Action: ${{ github.repository }}"
+      # Substitution must succeed, sets exit status if it doesn't
+      - name: "Run Action: ${{ github.repository }} [test-python-project]"
         uses: ./
         with:
           flags: "-i -E"
-          regex: 's:^version =.*$:version = 0.0.2:'
-          path: "test-python-project/pyproject.toml"
+          regex: 's/^version =.*$/version = "1.0.0"/'
+          path: 'test-python-project/pyproject.toml'
 
-      # Second time for a non-existent file, but override failure
-      - name: "Run Action: ${{ github.repository }}"
+
+      - name: "Validate results of string substitution"
+        shell: bash
+        run: |
+          # Validate results of string substitution
+          string=$(grep version test-python-project/pyproject.toml || true)
+          echo "$string"
+          if [ "$string" != 'version = "1.0.0"' ]; then
+            echo "Error: string substitution failed ❌"
+            exit 1
+          else
+            echo "Version string substitution successful ✅"
+          fi
+
+      # Test against a file that doesn't exist
+      - name: "Run Action: ${{ github.repository }} [no-file]"
         uses: ./
+        id: no-file
+        continue-on-error: true
         with:
           flags: "-i -E"
           regex: 's:^version =.*$:version = 0.0.2:'
-          path: "no-file-here"
-          no_fail: "true"
+          path: 'no-file-here'
+
+      - name: "Error if step above did NOT fail"
+        if: steps.no-file.outcome == 'success'
+        shell: bash
+        run: |
+          # Error if step above did NOT fail
+          echo "Error: previous test step did NOT fail ❌"; exit 1
+
+      # Checkout lftools repository
+      - name: "Checkout project repository with dynamic versioning"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: 'lfit/releng-lftools'
+          path: 'releng-lftools'
+
+      # lftools uses dynamic versioning, so this test fail
+      - name: "Run Action: ${{ github.repository }} [exit 1]"
+        id: no-substitution
+        uses: ./
+        continue-on-error: true
+        with:
+          flags: "-i -E"
+          regex: 's/^version =.*$/version = "1.0.0"/;tx;q1;:x'
+          path: 'releng-lftools/pyproject.toml'
+          debug: true
+
+      - name: "Error if step above did NOT fail"
+        if: steps.no-substitution.outcome == 'success'
+        shell: bash
+        run: |
+          # Error if step above did NOT fail
+          echo "Error: previous test step did NOT fail ❌"; exit 1
+
+      # lftools uses dynamic versioning, so this test fail
+      - name: "Run Action: ${{ github.repository }} [exit 5]"
+        id: exit-five
+        uses: ./
+        continue-on-error: true
+        with:
+          flags: "-i -E"
+          regex: 's/^version =.*$/version = "1.0.0"/;tx;q5;:x'
+          path: 'releng-lftools/pyproject.toml'
+
+      - name: "Error if step above did NOT fail"
+        if: steps.exit-five.outcome == 'success'
+        shell: bash
+        run: |
+          # Error if step above did NOT fail
+          echo "Error: previous test step did NOT fail ❌"
+          if [ ${{ steps.exit-five.outputs.exit_status }} -ne 5 ]; then
+            echo "Exit status output also invalid ❌"
+            echo "${{ steps.exit-five.outputs.exit_status }}"
+          fi
