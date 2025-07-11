@@ -48,7 +48,7 @@ runs:
         if [ -z "$file_path" ]; then
           echo 'Error: input variable/path cannot be empty ❌'; exit 1
         elif [ ! -f "$file_path" ]; then
-          echo "Error: file not found ❌"
+          echo 'Error: file not found ❌'
           echo "Path: $file_path"; exit 1
         fi
 

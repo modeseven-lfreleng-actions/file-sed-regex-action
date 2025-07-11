@@ -5,7 +5,7 @@ SPDX-FileCopyrightText: 2025 The Linux Foundation
 
 # 🔀 String Substitution in File (using sed)
 
-Performs string substitutions using the command-line tool, sed.
+Performs string substitutions using the command-line tool, GNU sed.
 
 ## file-sed-regex-action
 
@@ -19,7 +19,7 @@ Call as a step in a larger composite action or workflow.
 - name: 'Replace project version string'
   uses: lfreleng-actions/file-sed-regex-action@main
   with:
-    flags: "-i -E"
+    flags: '-i -E'
     regex: 's/^version =.*$/version = "1.0.0"/;tx;q5;:x'
     path: 'pyproject.toml'
 ```
