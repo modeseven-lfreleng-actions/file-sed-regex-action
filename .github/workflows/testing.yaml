@@ -34,6 +34,15 @@ jobs:
           repository: 'lfreleng-actions/test-python-project'
           path: 'test-python-project'
 
+      - name: 'Setup static version fixture for testing'
+        shell: bash
+        run: |
+          # Setup static version fixture for testing
+          # test-python-project uses dynamic versioning; copy static
+          # variation so sed substitution tests have a version line
+          cp test-python-project/variations/static-eol.toml \
+            test-python-project/pyproject.toml
+
       # Substitution must succeed, sets exit status if it doesn't
       - name: "Run Action: ${{ github.repository }} [test-python-project]"
         uses: ./
@@ -47,7 +56,8 @@ jobs:
         shell: bash
         run: |
           # Validate results of string substitution
-          string=$(grep version test-python-project/pyproject.toml || true)
+          file="test-python-project/pyproject.toml"
+          string=$(grep '^version = ' "$file" || true)
           echo "$string"
           if [ "$string" != 'version = "1.0.0"' ]; then
             echo "Error: string substitution failed ❌"
