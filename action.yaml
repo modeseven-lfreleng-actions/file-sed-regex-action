@@ -40,7 +40,7 @@ runs:
         sed_cmd=$(which sed)
         if [ ! -x "$sed_cmd" ]; then
           echo 'Error: sed command not in PATH ❌'; exit 1
-        elif ! ($sed_cmd sed --version 2>&1 | grep -q GNU); then
+        elif ! ("$sed_cmd" --version 2>&1 | grep -q GNU); then
           echo 'Error: this action only works with GNU sed ❌'; exit 1
         fi
 
