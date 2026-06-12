@@ -34,6 +34,11 @@ runs:
     - name: 'Performing string substitution'
       id: sed
       shell: bash
+      env:
+        INPUT_FLAGS: ${{ inputs.flags }}
+        INPUT_REGEX: ${{ inputs.regex }}
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_DEBUG: ${{ inputs.debug }}
       run: |
         # Performing string substitution
 
@@ -44,7 +49,15 @@ runs:
           echo 'Error: this action only works with GNU sed ❌'; exit 1
         fi
 
-        file_path="${{ inputs.path }}"
+        # The shell-execution mitigation relies on GNU sed's --sandbox mode;
+        # fail early with a clear message if this sed is too old to support it
+        # (rather than surfacing a confusing "unrecognized option" later).
+        if ! "$sed_cmd" --sandbox -n '' </dev/null >/dev/null 2>&1; then
+          echo 'Error: this GNU sed does not support --sandbox (needs >= 4.3) ❌'
+          exit 1
+        fi
+
+        file_path="$INPUT_PATH"
         if [ -z "$file_path" ]; then
           echo 'Error: input variable/path cannot be empty ❌'; exit 1
         elif [ ! -f "$file_path" ]; then
@@ -52,11 +65,25 @@ runs:
           echo "Path: $file_path"; exit 1
         fi
 
+        # Run GNU sed in --sandbox mode. This is the robust mitigation for
+        # the shell-execution risk: sandbox mode rejects the 'e'/'w'/'r'/'W'/'R'
+        # commands and the 's///e' substitution modifier (which execute the
+        # pattern space as a shell command or perform arbitrary file I/O),
+        # regardless of whether the construct arrives via INPUT_REGEX or
+        # INPUT_FLAGS. Unlike a flag denylist it does not break the legitimate
+        # '-e' option used to supply an expression.
         set -o noglob
-        if [ "f${{ inputs.debug }}" = 'ftrue' ]; then
-          echo "$sed_cmd ${{ inputs.flags }} '${{ inputs.regex }}' $file_path"
+        if [ "f$INPUT_DEBUG" = 'ftrue' ]; then
+          # Print a shell-escaped representation of the real argument vector.
+          # Flags are word-split (matching the unquoted expansion below) and
+          # each token is escaped with %q so control characters are visible.
+          read -ra _dbg_flags <<< "$INPUT_FLAGS"
+          printf 'sed --sandbox'
+          printf ' %q' "${_dbg_flags[@]}" "$INPUT_REGEX" "$file_path"
+          printf '\n'
         fi
-        "$sed_cmd" ${{ inputs.flags }} '${{ inputs.regex }}' "$file_path"
+        # shellcheck disable=SC2086
+        "$sed_cmd" --sandbox $INPUT_FLAGS "$INPUT_REGEX" "$file_path"
         exit_status="$?"
         echo "exit_status=$exit_status" >> "$GITHUB_OUTPUT"
         if [ "$exit_status" != '0' ]; then
