@@ -31,6 +31,8 @@ jobs:
     steps:
       - name: 'Checkout repository'
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
 
       # Perform setup prior to running test(s)
       - name: 'Checkout sample project repository'
@@ -38,6 +40,7 @@ jobs:
         with:
           repository: 'lfreleng-actions/test-python-project'
           path: 'test-python-project'
+          persist-credentials: false
 
       - name: 'Setup static version fixture for testing'
         shell: bash
@@ -94,6 +97,7 @@ jobs:
         with:
           repository: 'lfit/releng-lftools'
           path: 'releng-lftools'
+          persist-credentials: false
 
       # lftools uses dynamic versioning, so this test fail
       - name: "Run Action: ${{ github.repository }} [exit 1]"
@@ -126,10 +130,13 @@ jobs:
       - name: "Error if step above did NOT fail"
         if: steps.exit-five.outcome == 'success'
         shell: bash
+        env:
+          EXIT_STATUS: "${{ steps.exit-five.outputs.exit_status }}"
         run: |
           # Error if step above did NOT fail
           echo "Error: previous test step did NOT fail ❌"
-          if [ ${{ steps.exit-five.outputs.exit_status }} -ne 5 ]; then
+          if [ "$EXIT_STATUS" -ne 5 ]; then
             echo "Exit status output also invalid ❌"
-            echo "${{ steps.exit-five.outputs.exit_status }}"
+            echo "$EXIT_STATUS"
           fi
+          exit 1
