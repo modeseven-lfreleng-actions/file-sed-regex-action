@@ -32,7 +32,7 @@ Call as a step in a larger composite action or workflow.
 
 | Variable Name | Required | Default | Description                                     |
 | ------------- | -------- | ------- | ----------------------------------------------- |
-| flags         | True     | N/A     | The flags passed to sed on the command line     |
+| flags         | False    | -i      | The flags passed to sed on the command line     |
 | regex         | True     | N/A     | The regular expression to use                   |
 | path          | True     | N/A     | Path to the file to undergo string substitution |
 | debug         | False    | false   | Enable debugging output                         |
