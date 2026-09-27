@@ -72,20 +72,33 @@ runs:
         # regardless of whether the construct arrives via INPUT_REGEX or
         # INPUT_FLAGS. Unlike a flag denylist it does not break the legitimate
         # '-e' option used to supply an expression.
-        set -o noglob
+        #
+        # Pass the expression via -e and terminate options with -- so an
+        # expression or path beginning with '-' cannot be parsed as an option,
+        # and an '-e' in the flags cannot turn the expression into a filename.
+        # Drop standalone '--' tokens (supplied below), and a trailing '-e' or
+        # '--expression', which previously consumed the positional expression.
+        read -ra raw_flags <<< "$INPUT_FLAGS"
+        sed_flags=()
+        for sf in "${raw_flags[@]}"; do
+          [ "$sf" = '--' ] && continue
+          sed_flags+=("$sf")
+        done
+        if [ "${#sed_flags[@]}" -gt 0 ]; then
+          case "${sed_flags[-1]}" in
+            -e|--expression) unset 'sed_flags[-1]' ;;
+          esac
+        fi
+        sed_args=(--sandbox "${sed_flags[@]}" -e "$INPUT_REGEX" -- "$file_path")
         if [ "f$INPUT_DEBUG" = 'ftrue' ]; then
-          # Print a shell-escaped representation of the real argument vector.
-          # Flags are word-split (matching the unquoted expansion below) and
-          # each token is escaped with %q so control characters are visible.
-          read -ra _dbg_flags <<< "$INPUT_FLAGS"
-          printf 'sed --sandbox'
-          printf ' %q' "${_dbg_flags[@]}" "$INPUT_REGEX" "$file_path"
+          # Print a shell-escaped representation of the real argument vector;
+          # %q makes control characters visible.
+          printf 'sed'
+          printf ' %q' "${sed_args[@]}"
           printf '\n'
         fi
         exit_status=0
-        # shellcheck disable=SC2086
-        "$sed_cmd" --sandbox $INPUT_FLAGS "$INPUT_REGEX" "$file_path" \
-          || exit_status="$?"
+        "$sed_cmd" "${sed_args[@]}" || exit_status="$?"
         echo "exit_status=$exit_status" >> "$GITHUB_OUTPUT"
         if [ "$exit_status" != '0' ]; then
           echo "Error: sed command failed with exit status $exit_status ❌"

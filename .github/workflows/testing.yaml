@@ -80,6 +80,30 @@ jobs:
             echo "Version string substitution successful ✅"
           fi
 
+      # A path beginning with '-' must not be parsed as a sed option
+      - name: "Create fixture with a path beginning with '-'"
+        shell: bash
+        run: |
+          # Create fixture with a path beginning with '-'
+          printf 'x\n' > ./-dash-fixture.txt
+
+      - name: "Run Action: ${{ github.repository }} [dash-path]"
+        uses: $/
+        with:
+          flags: "-i"
+          regex: 's/x/y/'
+          path: '-dash-fixture.txt'
+
+      - name: "Validate substitution in path beginning with '-'"
+        shell: bash
+        run: |
+          # Validate substitution in path beginning with '-'
+          if [ "$(cat ./-dash-fixture.txt)" != 'y' ]; then
+            echo "Error: substitution in -dash-fixture.txt failed ❌"
+            exit 1
+          fi
+          echo "Substitution in path beginning with '-' successful ✅"
+
       # Test against a file that doesn't exist
       - name: "Run Action: ${{ github.repository }} [no-file]"
         uses: $/
