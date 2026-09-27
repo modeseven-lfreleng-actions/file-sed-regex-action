@@ -78,15 +78,19 @@ runs:
         # and an '-e' in the flags cannot turn the expression into a filename.
         # Drop standalone '--' tokens (supplied below), and a trailing '-e' or
         # '--expression', which previously consumed the positional expression.
-        read -ra raw_flags <<< "$INPUT_FLAGS"
+        # Split flags on any whitespace, newlines included, as the previous
+        # unquoted expansion did; read returns 1 at end of input.
+        read -r -d '' -a raw_flags <<< "$INPUT_FLAGS" || true
         sed_flags=()
         for sf in "${raw_flags[@]}"; do
           [ "$sf" = '--' ] && continue
           sed_flags+=("$sf")
         done
-        if [ "${#sed_flags[@]}" -gt 0 ]; then
-          case "${sed_flags[-1]}" in
-            -e|--expression) unset 'sed_flags[-1]' ;;
+        # Non-negative index: negative subscripts need bash >= 4.3
+        last=$(( ${#sed_flags[@]} - 1 ))
+        if [ "$last" -ge 0 ]; then
+          case "${sed_flags[last]}" in
+            -e|--expression) unset "sed_flags[last]" ;;
           esac
         fi
         sed_args=(--sandbox "${sed_flags[@]}" -e "$INPUT_REGEX" -- "$file_path")

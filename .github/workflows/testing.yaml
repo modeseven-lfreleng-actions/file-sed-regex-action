@@ -104,6 +104,62 @@ jobs:
           fi
           echo "Substitution in path beginning with '-' successful ✅"
 
+      # Legacy and extended flags forms must keep working
+      - name: "Create fixtures for flags compatibility tests"
+        shell: bash
+        run: |
+          # Create fixtures for flags compatibility tests
+          for f in legacy-dashdash legacy-trailing-e extra-e multiline; do
+            printf 'x\n' > "flags-$f.txt"
+          done
+
+      - name: "Run Action: ${{ github.repository }} [flags: -i --]"
+        uses: $/
+        with:
+          flags: "-i --"
+          regex: 's/x/y/'
+          path: 'flags-legacy-dashdash.txt'
+
+      - name: "Run Action: ${{ github.repository }} [flags: -i -e]"
+        uses: $/
+        with:
+          flags: "-i -e"
+          regex: 's/x/y/'
+          path: 'flags-legacy-trailing-e.txt'
+
+      - name: "Run Action: ${{ github.repository }} [flags: -i -e expr]"
+        uses: $/
+        with:
+          flags: "-i -e s/x/y/"
+          regex: 's/y/z/'
+          path: 'flags-extra-e.txt'
+
+      - name: "Run Action: ${{ github.repository }} [multi-line flags]"
+        uses: $/
+        with:
+          flags: |
+            -i
+            -E
+          regex: 's/(x)/\1y/'
+          path: 'flags-multiline.txt'
+
+      - name: "Validate flags compatibility results"
+        shell: bash
+        run: |
+          # Validate flags compatibility results
+          failed=0
+          for pair in legacy-dashdash:y legacy-trailing-e:y extra-e:z \
+            multiline:xy; do
+            file="flags-${pair%%:*}.txt" want="${pair#*:}"
+            got=$(cat "$file")
+            if [ "$got" != "$want" ]; then
+              echo "Error: $file contains '$got', expected '$want' ❌"
+              failed=1
+            fi
+          done
+          [ "$failed" -eq 0 ] || exit 1
+          echo "Flags compatibility validated ✅"
+
       # Test against a file that doesn't exist
       - name: "Run Action: ${{ github.repository }} [no-file]"
         uses: $/
