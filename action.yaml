@@ -82,14 +82,14 @@ runs:
           printf ' %q' "${_dbg_flags[@]}" "$INPUT_REGEX" "$file_path"
           printf '\n'
         fi
+        exit_status=0
         # shellcheck disable=SC2086
-        "$sed_cmd" --sandbox $INPUT_FLAGS "$INPUT_REGEX" "$file_path"
-        exit_status="$?"
+        "$sed_cmd" --sandbox $INPUT_FLAGS "$INPUT_REGEX" "$file_path" \
+          || exit_status="$?"
         echo "exit_status=$exit_status" >> "$GITHUB_OUTPUT"
         if [ "$exit_status" != '0' ]; then
-          echo -n "Error: sed command failed with exit status $exit_status ❌"
-          exit $exit_status
+          echo "Error: sed command failed with exit status $exit_status ❌"
+          exit "$exit_status"
         else
-          echo 'exit_status=0' >> "$GITHUB_OUTPUT"
           echo 'Successful sed command/operation ✅'
         fi
