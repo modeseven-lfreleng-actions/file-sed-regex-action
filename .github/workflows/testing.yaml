@@ -33,11 +33,6 @@ jobs:
       contents: read
     timeout-minutes: 5
     steps:
-      - name: 'Checkout repository'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
       # Perform setup prior to running test(s)
       - name: 'Checkout sample project repository'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -57,7 +52,7 @@ jobs:
 
       # Substitution must succeed, sets exit status if it doesn't
       - name: "Run Action: ${{ github.repository }} [test-python-project]"
-        uses: ./
+        uses: $/
         with:
           flags: "-i -E"
           regex: 's/^version =.*$/version = "1.0.0"/'
@@ -80,7 +75,7 @@ jobs:
 
       # Test against a file that doesn't exist
       - name: "Run Action: ${{ github.repository }} [no-file]"
-        uses: ./
+        uses: $/
         id: no-file
         continue-on-error: true
         with:
@@ -106,7 +101,7 @@ jobs:
       # lftools uses dynamic versioning, so this test fail
       - name: "Run Action: ${{ github.repository }} [exit 1]"
         id: no-substitution
-        uses: ./
+        uses: $/
         continue-on-error: true
         with:
           flags: "-i -E"
@@ -124,7 +119,7 @@ jobs:
       # lftools uses dynamic versioning, so this test fail
       - name: "Run Action: ${{ github.repository }} [exit 5]"
         id: exit-five
-        uses: ./
+        uses: $/
         continue-on-error: true
         with:
           flags: "-i -E"
