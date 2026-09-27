@@ -42,7 +42,7 @@ runs:
       run: |
         # Performing string substitution
 
-        sed_cmd=$(which sed)
+        sed_cmd=$(command -v sed || true)
         if [ ! -x "$sed_cmd" ]; then
           echo 'Error: sed command not in PATH ❌'; exit 1
         elif ! ("$sed_cmd" --version 2>&1 | grep -q GNU); then
