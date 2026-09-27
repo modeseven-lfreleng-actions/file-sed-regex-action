@@ -52,6 +52,7 @@ jobs:
 
       # Substitution must succeed, sets exit status if it doesn't
       - name: "Run Action: ${{ github.repository }} [test-python-project]"
+        id: substitution
         uses: $/
         with:
           flags: "-i -E"
@@ -61,8 +62,14 @@ jobs:
 
       - name: "Validate results of string substitution"
         shell: bash
+        env:
+          EXIT_STATUS: "${{ steps.substitution.outputs.exit_status }}"
         run: |
           # Validate results of string substitution
+          if [ "$EXIT_STATUS" != '0' ]; then
+            echo "Error: expected exit_status 0, got '$EXIT_STATUS' ❌"
+            exit 1
+          fi
           file="test-python-project/pyproject.toml"
           string=$(grep '^version = ' "$file" || true)
           echo "$string"
@@ -109,12 +116,21 @@ jobs:
           path: 'releng-lftools/pyproject.toml'
           debug: true
 
-      - name: "Error if step above did NOT fail"
-        if: steps.no-substitution.outcome == 'success'
+      - name: "Validate no-substitution failure and exit status"
         shell: bash
+        env:
+          OUTCOME: "${{ steps.no-substitution.outcome }}"
+          EXIT_STATUS: "${{ steps.no-substitution.outputs.exit_status }}"
         run: |
-          # Error if step above did NOT fail
-          echo "Error: previous test step did NOT fail ❌"; exit 1
+          # Validate no-substitution failure and exit status
+          if [ "$OUTCOME" != 'failure' ]; then
+            echo "Error: previous test step did NOT fail ❌"; exit 1
+          fi
+          if [ "$EXIT_STATUS" != '1' ]; then
+            echo "Error: expected exit_status 1, got '$EXIT_STATUS' ❌"
+            exit 1
+          fi
+          echo "Failure and exit status validated ✅"
 
       # lftools uses dynamic versioning, so this test fail
       - name: "Run Action: ${{ github.repository }} [exit 5]"
@@ -126,16 +142,18 @@ jobs:
           regex: 's/^version =.*$/version = "1.0.0"/;tx;q5;:x'
           path: 'releng-lftools/pyproject.toml'
 
-      - name: "Error if step above did NOT fail"
-        if: steps.exit-five.outcome == 'success'
+      - name: "Validate exit-five failure and exit status"
         shell: bash
         env:
+          OUTCOME: "${{ steps.exit-five.outcome }}"
           EXIT_STATUS: "${{ steps.exit-five.outputs.exit_status }}"
         run: |
-          # Error if step above did NOT fail
-          echo "Error: previous test step did NOT fail ❌"
-          if [ "$EXIT_STATUS" -ne 5 ]; then
-            echo "Exit status output also invalid ❌"
-            echo "$EXIT_STATUS"
+          # Validate exit-five failure and exit status
+          if [ "$OUTCOME" != 'failure' ]; then
+            echo "Error: previous test step did NOT fail ❌"; exit 1
           fi
-          exit 1
+          if [ "$EXIT_STATUS" != '5' ]; then
+            echo "Error: expected exit_status 5, got '$EXIT_STATUS' ❌"
+            exit 1
+          fi
+          echo "Failure and exit status validated ✅"
