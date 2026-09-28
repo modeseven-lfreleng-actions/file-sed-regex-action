@@ -52,6 +52,7 @@ jobs:
 
       # Substitution must succeed, sets exit status if it doesn't
       - name: "Run Action: ${{ github.repository }} [test-python-project]"
+        id: substitution
         uses: $/
         with:
           flags: "-i -E"
@@ -61,8 +62,14 @@ jobs:
 
       - name: "Validate results of string substitution"
         shell: bash
+        env:
+          EXIT_STATUS: "${{ steps.substitution.outputs.exit_status }}"
         run: |
           # Validate results of string substitution
+          if [ "$EXIT_STATUS" != '0' ]; then
+            echo "Error: expected exit_status 0, got '$EXIT_STATUS' ❌"
+            exit 1
+          fi
           file="test-python-project/pyproject.toml"
           string=$(grep '^version = ' "$file" || true)
           echo "$string"
@@ -72,6 +79,86 @@ jobs:
           else
             echo "Version string substitution successful ✅"
           fi
+
+      # A path beginning with '-' must not be parsed as a sed option
+      - name: "Create fixture with a path beginning with '-'"
+        shell: bash
+        run: |
+          # Create fixture with a path beginning with '-'
+          printf 'x\n' > ./-dash-fixture.txt
+
+      - name: "Run Action: ${{ github.repository }} [dash-path]"
+        uses: $/
+        with:
+          flags: "-i"
+          regex: 's/x/y/'
+          path: '-dash-fixture.txt'
+
+      - name: "Validate substitution in path beginning with '-'"
+        shell: bash
+        run: |
+          # Validate substitution in path beginning with '-'
+          if [ "$(cat ./-dash-fixture.txt)" != 'y' ]; then
+            echo "Error: substitution in -dash-fixture.txt failed ❌"
+            exit 1
+          fi
+          echo "Substitution in path beginning with '-' successful ✅"
+
+      # Legacy and extended flags forms must keep working
+      - name: "Create fixtures for flags compatibility tests"
+        shell: bash
+        run: |
+          # Create fixtures for flags compatibility tests
+          for f in legacy-dashdash legacy-trailing-e extra-e multiline; do
+            printf 'x\n' > "flags-$f.txt"
+          done
+
+      - name: "Run Action: ${{ github.repository }} [flags: -i --]"
+        uses: $/
+        with:
+          flags: "-i --"
+          regex: 's/x/y/'
+          path: 'flags-legacy-dashdash.txt'
+
+      - name: "Run Action: ${{ github.repository }} [flags: -i -e]"
+        uses: $/
+        with:
+          flags: "-i -e"
+          regex: 's/x/y/'
+          path: 'flags-legacy-trailing-e.txt'
+
+      - name: "Run Action: ${{ github.repository }} [flags: -i -e expr]"
+        uses: $/
+        with:
+          flags: "-i -e s/x/y/"
+          regex: 's/y/z/'
+          path: 'flags-extra-e.txt'
+
+      - name: "Run Action: ${{ github.repository }} [multi-line flags]"
+        uses: $/
+        with:
+          flags: |
+            -i
+            -E
+          regex: 's/(x)/\1y/'
+          path: 'flags-multiline.txt'
+
+      - name: "Validate flags compatibility results"
+        shell: bash
+        run: |
+          # Validate flags compatibility results
+          failed=0
+          for pair in legacy-dashdash:y legacy-trailing-e:y extra-e:z \
+            multiline:xy; do
+            file="flags-${pair%%:*}.txt" want="${pair#*:}"
+            got=$(cat "$file")
+            if [ "$got" != "$want" ]; then
+              echo "Error: $file contains '$got', expected '$want' ❌"
+              failed=1
+            fi
+          done
+          [ "$failed" -eq 0 ] || exit 1
+          echo "Flags compatibility validated ✅"
 
       # Test against a file that doesn't exist
       - name: "Run Action: ${{ github.repository }} [no-file]"
@@ -109,12 +196,21 @@ jobs:
           path: 'releng-lftools/pyproject.toml'
           debug: true
 
-      - name: "Error if step above did NOT fail"
-        if: steps.no-substitution.outcome == 'success'
+      - name: "Validate no-substitution failure and exit status"
         shell: bash
+        env:
+          OUTCOME: "${{ steps.no-substitution.outcome }}"
+          EXIT_STATUS: "${{ steps.no-substitution.outputs.exit_status }}"
         run: |
-          # Error if step above did NOT fail
-          echo "Error: previous test step did NOT fail ❌"; exit 1
+          # Validate no-substitution failure and exit status
+          if [ "$OUTCOME" != 'failure' ]; then
+            echo "Error: previous test step did NOT fail ❌"; exit 1
+          fi
+          if [ "$EXIT_STATUS" != '1' ]; then
+            echo "Error: expected exit_status 1, got '$EXIT_STATUS' ❌"
+            exit 1
+          fi
+          echo "Failure and exit status validated ✅"
 
       # lftools uses dynamic versioning, so this test fail
       - name: "Run Action: ${{ github.repository }} [exit 5]"
@@ -126,16 +222,18 @@ jobs:
           regex: 's/^version =.*$/version = "1.0.0"/;tx;q5;:x'
           path: 'releng-lftools/pyproject.toml'
 
-      - name: "Error if step above did NOT fail"
-        if: steps.exit-five.outcome == 'success'
+      - name: "Validate exit-five failure and exit status"
         shell: bash
         env:
+          OUTCOME: "${{ steps.exit-five.outcome }}"
           EXIT_STATUS: "${{ steps.exit-five.outputs.exit_status }}"
         run: |
-          # Error if step above did NOT fail
-          echo "Error: previous test step did NOT fail ❌"
-          if [ "$EXIT_STATUS" -ne 5 ]; then
-            echo "Exit status output also invalid ❌"
-            echo "$EXIT_STATUS"
+          # Validate exit-five failure and exit status
+          if [ "$OUTCOME" != 'failure' ]; then
+            echo "Error: previous test step did NOT fail ❌"; exit 1
           fi
-          exit 1
+          if [ "$EXIT_STATUS" != '5' ]; then
+            echo "Error: expected exit_status 5, got '$EXIT_STATUS' ❌"
+            exit 1
+          fi
+          echo "Failure and exit status validated ✅"
